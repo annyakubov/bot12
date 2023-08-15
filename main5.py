@@ -1,11 +1,12 @@
 import logging
-
+import pickle  #!!!!!
 from datetime import datetime, timedelta
 
 
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CallbackContext, CommandHandler
 
+DATA_FILE = "expenses_data.pkl"
 
 
 categories = ['Food', 'Transportation', 'Entertainment']
@@ -221,8 +222,24 @@ async def view_stats(update: Update, context: CallbackContext) -> None:
 
     await update.message.reply_text(all_stats)
 
+def save_data():
+    with open(DATA_FILE, "wb") as file:
+        pickle.dump(expenses, file)
+
+def load_data():
+    try:
+        with open(DATA_FILE, "rb") as file:
+            return pickle.load(file)
+    except FileNotFoundError:
+        return {}
+
+
+
 
 def run():
+    global expenses
+    expenses = load_data()
+
     app = ApplicationBuilder().token(TOKEN_BOT).build()
     logging.info("Application build successfully!")
 
