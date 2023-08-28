@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CallbackContext, CommandHandler
+import atexit
 
 DATA_FILE = "expenses_data.pkl"
 
@@ -234,8 +235,6 @@ def load_data():
         return {}
 
 
-
-
 def run():
     global expenses
     expenses = load_data()
@@ -252,10 +251,10 @@ def run():
     app.add_handler(CommandHandler("remove_ex", remove_ex))
     app.add_handler(CommandHandler("view_stats", view_stats))
 
-    app.run_polling()
+    # Регистрируем функцию сохранения данных перед завершением программы
+    atexit.register(save_data)
 
+    app.run_polling()
 
 if __name__ == "__main__":
     run()
-
-
