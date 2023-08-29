@@ -78,6 +78,30 @@ async def add_ex(update: Update, context: CallbackContext, ex_category=None) -> 
     await update.message.reply_text(f"Expenses {ex_food} {expen} append successfully")
 
 
+async def add_income(update: Update, context: CallbackContext) -> None:
+    logging.info("command run <add_income>")
+
+    income_amount = "".join(context.args).split("|")
+    income_category = income_amount[0].strip()
+    income_value = income_amount[1].strip()
+    current_time = datetime.now().strftime('%Y-%m-%d')
+    await update.message.reply_text(f"Current time: {current_time}")
+
+    # Ваш код для перевірки категорії і додавання доходу до expenses
+
+    new_income = {"amount": income_value, "date": current_time}
+
+    if income_category not in expenses:
+        expenses[income_category] = []
+
+    expenses[income_category].append(new_income)
+
+    await update.message.reply_text(f"Income {income_category} {income_value} {current_time} appended successfully")
+
+    print(expenses)
+    await update.message.reply_text(f"Income {income_category} {income_value} append successfully")
+
+
 async def view_all_ex(update: Update, context: CallbackContext, ) -> None:
     logging.info("command run <view_all_ex>")
 
@@ -221,6 +245,20 @@ async def view_stats(update: Update, context: CallbackContext) -> None:
 
     all_stats += f"Total {ex_category} { total_amount} грн."
 
+    # Код для показу статистики доходів
+    total_income = 0
+    for income in expenses[ex_category]:  # Припустимо, що доходи зберігаються в тому ж словнику expenses
+        income_date_str = income.get("date")
+        if income_date_str:
+            try:
+                income_date = datetime.strptime(income_date_str, '%Y-%m-%d').date()
+                if income_date >= selected_date:
+                    total_income += int(income['amount'])
+            except ValueError:
+                logging.warning(f"Error while parsing date: {income_date_str}")
+
+    all_stats += f"\nTotal {ex_category} income: {total_income} грн."
+
     await update.message.reply_text(all_stats)
 
 def save_data():
@@ -245,11 +283,13 @@ def run():
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("help", start))
     app.add_handler(CommandHandler('add_ex', add_ex))
+    app.add_handler(CommandHandler('add_income', add_income))
     app.add_handler(CommandHandler("view_all_ex", view_all_ex))
     app.add_handler(CommandHandler("view_monthly_ex", view_monthly_ex))
     app.add_handler(CommandHandler("view_weekly_ex", view_weekly_ex))
     app.add_handler(CommandHandler("remove_ex", remove_ex))
     app.add_handler(CommandHandler("view_stats", view_stats))
+
 
     # Регистрируем функцию сохранения данных перед завершением программы
     atexit.register(save_data)
