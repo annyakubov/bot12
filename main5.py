@@ -32,6 +32,7 @@ async def start(update: Update, context: CallbackContext) -> None:
         "Hello! I'm your income and expenses bot. What do you want to do?\n"
         "Commands :\n"
         "Adding tasks: /add_ex | \n"
+        "Adding tasks: /add_income | \n"
         "View_all_ex tasks: /view_all_ex| \n"
         "View_monthly_ex tasks: /view_monthly_ex| \n"
         "View_weekly_ex tasks: /view_weekly_ex| \n"
