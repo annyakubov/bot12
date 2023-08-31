@@ -7,11 +7,16 @@ from telegram import Update
 from telegram.ext import ApplicationBuilder, CallbackContext, CommandHandler
 import atexit
 
+
+
 DATA_FILE = "expenses_data.pkl"
 
 
 categories = ['Food', 'Transportation', 'Entertainment']
 expenses = {}
+
+incomes = {}  #  новий словник для збереження доходів
+
 
 TOKEN_BOT = "6042142412:AAEvIFZRDWYk8rsfkan9cijJsGH-WWzorFI"
 user_data = dict()
@@ -79,28 +84,27 @@ async def add_ex(update: Update, context: CallbackContext, ex_category=None) -> 
     await update.message.reply_text(f"Expenses {ex_food} {expen} append successfully")
 
 
-async def add_income(update: Update, context: CallbackContext) -> None:
+async def add_income(update: Update, context: CallbackContext) -> None:   #????????
     logging.info("command run <add_income>")
 
-    income_amount = "".join(context.args).split("|")
-    income_category = income_amount[0].strip()
-    income_value = income_amount[1].strip()
+    income_args = "".join(context.args).split("|")
+    income_category = income_args[0].strip()
+    income_value = income_args[1].strip()
     current_time = datetime.now().strftime('%Y-%m-%d')
+
     await update.message.reply_text(f"Current time: {current_time}")
 
-    # Ваш код для перевірки категорії і додавання доходу до expenses
-
+    # Додавання доходу до incomes
     new_income = {"amount": income_value, "date": current_time}
 
-    if income_category not in expenses:
-        expenses[income_category] = []
+    if income_category not in incomes:
+        incomes[income_category] = []
 
-    expenses[income_category].append(new_income)
+    incomes[income_category].append(new_income)
 
     await update.message.reply_text(f"Income {income_category} {income_value} {current_time} appended successfully")
 
-    print(expenses)
-    await update.message.reply_text(f"Income {income_category} {income_value} append successfully")
+
 
 
 async def view_all_ex(update: Update, context: CallbackContext, ) -> None:
@@ -205,62 +209,50 @@ async def view_stats(update: Update, context: CallbackContext) -> None:
     time_period = ex_args[1].strip().lower()
 
     if len(context.args) < 2:
-        await update.message.reply_text("Please provide the category and the time period (day/month/week/year) for which you want to view the statistics. Example: /view_stats Food|month")
+        await update.message.reply_text(
+            "Please provide the category and the time period (day/month/week/year) for which you want to view the statistics. Example: /view_stats Food|month")
         return
 
-
-    if ex_category not in categories:
-        await update.message.reply_text("Invalid category")
-        return
-
-    if ex_category not in expenses:
-        await update.message.reply_text("Category not found")
-        return
+    # Визначення потрібної дати для відображення статистики
+    selected_date = ...
 
     all_stats = ""
-    selected_date = None  # Визначимо змінну поза гілками умовного оператора
 
-    if time_period == "day":
-        all_stats = f"Statistics for {ex_category} for today:\n"
-        selected_date = datetime.now().date()
-    elif time_period == "month":
-        all_stats = f"Statistics for {ex_category} for the current month:\n"
-        selected_date = datetime.now().date().replace(day=1)
-    elif time_period == "week":
-        all_stats = f"Statistics for {ex_category} for the last week:\n"
-        selected_date = datetime.now().date() - timedelta(weeks=1)
-    elif time_period == "year":
-        all_stats = f"Statistics for {ex_category} for the current year:\n"
-        selected_date = datetime.now().date().replace(month=1, day=1)
+    # Опрацьовуємо витрати
+    if ex_category in expenses:
+        total_expenses = 0
+        for expense in expenses[ex_category]:
+            expense_date_str = expense.get("date")
+            if expense_date_str:
+                try:
+                    expense_date = datetime.strptime(expense_date_str, '%Y-%m-%d').date()
+                    if expense_date >= selected_date:
+                        total_expenses += int(expense['amount'])
+                except ValueError:
+                    logging.warning(f"Error while parsing date: {expense_date_str}")
 
-    total_amount = 0
-    for expense in expenses[ex_category]:
-        expense_date_str = expense.get("date")
-        if expense_date_str:
-            try:
-                expense_date = datetime.strptime(expense_date_str, '%Y-%m-%d').date()
-                if expense_date >= selected_date:
-                    total_amount += int(expense['amount'])
-            except ValueError:
-                logging.warning(f"Error while parsing date: {expense_date_str}")
+        all_stats += f"Total {ex_category} expenses: {total_expenses} грн.\n"
 
-    all_stats += f"Total {ex_category} { total_amount} грн."
+    # Опрацьовуємо доходи
+    if ex_category in incomes:
+        total_incomes = 0
+        for income in incomes[ex_category]:
+            income_date_str = income.get("date")
+            if income_date_str:
+                try:
+                    income_date = datetime.strptime(income_date_str, '%Y-%m-%d').date()
+                    if income_date >= selected_date:
+                        total_incomes += int(income['amount'])
+                except ValueError:
+                    logging.warning(f"Error while parsing date: {income_date_str}")
 
-    # Код для показу статистики доходів
-    total_income = 0
-    for income in expenses[ex_category]:  # Припустимо, що доходи зберігаються в тому ж словнику expenses
-        income_date_str = income.get("date")
-        if income_date_str:
-            try:
-                income_date = datetime.strptime(income_date_str, '%Y-%m-%d').date()
-                if income_date >= selected_date:
-                    total_income += int(income['amount'])
-            except ValueError:
-                logging.warning(f"Error while parsing date: {income_date_str}")
-
-    all_stats += f"\nTotal {ex_category} income: {total_income} грн."
+        all_stats += f"Total {ex_category} incomes: {total_incomes} грн."
 
     await update.message.reply_text(all_stats)
+
+
+
+
 
 def save_data():
     with open(DATA_FILE, "wb") as file:
