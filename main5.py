@@ -41,9 +41,10 @@ async def start(update: Update, context: CallbackContext) -> None:
         "View_all_ex tasks: /view_all_ex| \n"
         "View_monthly_ex tasks: /view_monthly_ex| \n"
         "View_weekly_ex tasks: /view_weekly_ex| \n"
-
+        "View statistics for expenses: /view_stats_expenses\n"
+        "View statistics for incomes: /view_stats_incomes\n"
         "Remove task:/remove <task number>\n"
-        "View_stats tasks: /view_stats| \n"
+
     )
 
 
@@ -201,7 +202,7 @@ async def remove_ex(update: Update, context: CallbackContext) -> None:
     await update.message.reply_text(f"Removed {ex_category} {ex_value} successfully.")
 
 
-async def view_stats(update: Update, context: CallbackContext) -> None:
+async def view_stats_expenses(update: Update, context: CallbackContext) -> None:
     logging.info("command run <view_stats>")
 
     ex_args = "".join(context.args).split("|")
@@ -214,7 +215,17 @@ async def view_stats(update: Update, context: CallbackContext) -> None:
         return
 
     # Визначення потрібної дати для відображення статистики
-    selected_date = ...
+    if time_period == "day":
+        selected_date = datetime.now().date()
+    elif time_period == "month":
+        selected_date = datetime.now().date().replace(day=1)
+    elif time_period == "week":
+        selected_date = datetime.now().date() - timedelta(weeks=1)
+    elif time_period == "year":
+        selected_date = datetime.now().date().replace(month=1, day=1)
+    else:
+        await update.message.reply_text("Invalid time period. Please use day/month/week/year.")
+        return
 
     all_stats = ""
 
@@ -251,6 +262,50 @@ async def view_stats(update: Update, context: CallbackContext) -> None:
     await update.message.reply_text(all_stats)
 
 
+async def view_stats_incomes(update: Update, context: CallbackContext) -> None:
+    logging.info("command run <view_stats_incomes>")
+
+    ex_args = "".join(context.args).split("|")
+    ex_category = ex_args[0].strip()
+    time_period = ex_args[1].strip().lower()
+
+    if len(context.args) < 2:
+        await update.message.reply_text(
+            "Please provide the category and the time period (day/month/week/year) for which you want to view the statistics. Example: /view_stats_incomes Food|month")
+        return
+
+    # Визначення потрібної дати для відображення статистики
+    if time_period == "day":
+        selected_date = datetime.now().date()
+    elif time_period == "month":
+        selected_date = datetime.now().date().replace(day=1)
+    elif time_period == "week":
+        selected_date = datetime.now().date() - timedelta(weeks=1)
+    elif time_period == "year":
+        selected_date = datetime.now().date().replace(month=1, day=1)
+    else:
+        await update.message.reply_text("Invalid time period. Please use day/month/week/year.")
+        return
+
+    all_stats = ""
+
+    # Опрацьовуємо доходи
+    if ex_category in incomes:
+        total_incomes = 0
+        for income in incomes[ex_category]:
+            income_date_str = income.get("date")
+            if income_date_str:
+                try:
+                    income_date = datetime.strptime(income_date_str, '%Y-%m-%d').date()
+                    if income_date >= selected_date:
+                        total_incomes += int(income['amount'])
+                except ValueError:
+                    logging.warning(f"Error while parsing date: {income_date_str}")
+
+        all_stats += f"Total {ex_category} incomes: {total_incomes} грн."
+
+    await update.message.reply_text(all_stats)
+
 
 
 
@@ -281,8 +336,8 @@ def run():
     app.add_handler(CommandHandler("view_monthly_ex", view_monthly_ex))
     app.add_handler(CommandHandler("view_weekly_ex", view_weekly_ex))
     app.add_handler(CommandHandler("remove_ex", remove_ex))
-    app.add_handler(CommandHandler("view_stats", view_stats))
-
+    app.add_handler(CommandHandler("view_stats_expenses", view_stats_expenses))
+    app.add_handler(CommandHandler("view_stats_incomes", view_stats_incomes))
 
     # Регистрируем функцию сохранения данных перед завершением программы
     atexit.register(save_data)
