@@ -1,5 +1,5 @@
 import logging
-import pickle  #!!!!!
+import pickle
 from datetime import datetime, timedelta
 
 
@@ -36,15 +36,16 @@ async def start(update: Update, context: CallbackContext) -> None:
     await update.message.reply_text(
         "Hello! I'm your income and expenses bot. What do you want to do?\n"
         "Commands :\n"
-        "Adding tasks: /add_ex | \n"
-        "Adding tasks: /add_income | \n"
-        "View_all_ex tasks: /view_all_ex| \n"
-        "View_monthly_ex tasks: /view_monthly_ex| \n"
-        "View_weekly_ex tasks: /view_weekly_ex| \n"
+
+        "Add an expense: /add_ex <category> | <amount>\n"
+        "Add an income: /add_income <source> | <amount>\n"
+        "View all expenses: /view_all_ex\n"
+        "View monthly expenses: /view_monthly_ex\n"
+        "View weekly expenses: /view_weekly_ex\n"
         "View statistics for expenses: /view_stats_expenses\n"
         "View statistics for incomes: /view_stats_incomes\n"
-        "Remove task:/remove <task number>\n"
-
+        "Remove an expense: /remove_ex <category> | <amount>\n"
+        "Remove an income: /remove_income <income_index>\n"
     )
 
 
@@ -202,6 +203,39 @@ async def remove_ex(update: Update, context: CallbackContext) -> None:
     await update.message.reply_text(f"Removed {ex_category} {ex_value} successfully.")
 
 
+
+
+async def remove_income(update: Update, context: CallbackContext) -> None:
+    logging.info("Command remove_income was triggered")
+
+    if len(context.args) < 2:
+        await update.message.reply_text("Please provide the source and amount of the income you want to remove. Example: /remove_income Salary 1000")
+        return
+
+    income_args = "".join(context.args).split("|")
+    income_source = income_args[0].strip()
+    income_value = income_args[1].strip()
+
+    if income_source not in incomes:
+        await update.message.reply_text("Income source not found")
+        return
+
+    # Знаходимо дохід, який має бути видалений
+    target_income = None
+    for income in incomes[income_source]:
+        if income["amount"] == income_value:
+            target_income = income
+            break
+
+    if target_income is None:
+        await update.message.reply_text(f"Income with amount {income_value} not found in {income_source}")
+        return
+
+    incomes[income_source].remove(target_income)
+    await update.message.reply_text(f"Income removed: {income_source} {income_value} грн. ({target_income['date']})")
+
+
+
 async def view_stats_expenses(update: Update, context: CallbackContext) -> None:
     logging.info("command run <view_stats>")
 
@@ -336,8 +370,10 @@ def run():
     app.add_handler(CommandHandler("view_monthly_ex", view_monthly_ex))
     app.add_handler(CommandHandler("view_weekly_ex", view_weekly_ex))
     app.add_handler(CommandHandler("remove_ex", remove_ex))
+    app.add_handler(CommandHandler("remove_income", remove_income))
     app.add_handler(CommandHandler("view_stats_expenses", view_stats_expenses))
     app.add_handler(CommandHandler("view_stats_incomes", view_stats_incomes))
+
 
     # Регистрируем функцию сохранения данных перед завершением программы
     atexit.register(save_data)
